@@ -4,6 +4,8 @@
 """A module containing 'GraphExtractionResult' and 'GraphExtractor' models."""
 
 import json
+import logging
+import traceback
 from dataclasses import dataclass
 
 from graphrag.index.typing import ErrorHandlerFn
@@ -122,14 +124,29 @@ class SummarizeExtractor:
         self, items: str | tuple[str, str] | list[str], descriptions: list[str]
     ):
         """Summarize descriptions using the LLM."""
-        response = await self._llm(
-            self._summarization_prompt,
-            name="summarize",
-            variables={
-                self._entity_name_key: json.dumps(items),
-                self._input_descriptions_key: json.dumps(sorted(descriptions)),
-            },
-            model_parameters={"max_tokens": self._max_summary_length},
-        )
+        try:
+
+            response = await self._llm(
+                self._summarization_prompt,
+                name="summarize",
+                variables={
+                    self._entity_name_key: json.dumps(items),
+                    self._input_descriptions_key: json.dumps(sorted(descriptions)),
+                },
+                model_parameters={"max_tokens": self._max_summary_length},
+            )
+
+            # Calculate result
+            return str(response.output)
+        except Exception as e:
+            logging.exception("error Unipartite graph extractor summarize")
+            self._on_error(
+                e,
+                traceback.format_exc(),
+                {
+                    "items": items,
+                    "descriptions": descriptions,
+                },
+            )
         # Calculate result
-        return str(response.output)
+        return ""
